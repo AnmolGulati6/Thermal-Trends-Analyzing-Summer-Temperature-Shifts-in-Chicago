@@ -1,5 +1,4 @@
 ### README File:
-```markdown
 # Thermal Trends: Analyzing Summer Temperature Shifts in Chicago
 
 ## Project Overview
