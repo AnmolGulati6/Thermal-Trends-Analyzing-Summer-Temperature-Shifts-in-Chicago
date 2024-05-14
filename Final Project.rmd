@@ -1,0 +1,111 @@
+---
+title: "Project Draft"
+output: html_document
+date: "2024-04-11"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE,
+                      warning = FALSE, error = TRUE, fig.height = 3)
+library(tidyverse)
+library(lubridate)
+library(kableExtra)
+library(broman)
+source("../../scripts/viridis.R")
+source("../../scripts/ggprob.R")
+theme_set(theme_minimal())
+```
+
+## Introduction
+
+Chicago, known for its diverse weather patterns, experiences fluctuations in temperature throughout the year, impacting residents and industries alike. Understanding the trends in temperature variation is crucial for urban planning, resource management, and climate adaptation strategies. In this analysis, we investigate whether there is evidence of a significant change in the average temperature in Chicago between the summers of 2022 and 2023.
+
+Questions of Interest:
+
+1. Is there evidence of a significant change in the average temperature in Chicago over the period from Summer 2022 compared to Summer 2023?
+   - This question addresses the overarching objective of the analysis, focusing on identifying any notable shifts in temperature trends between the two specified time periods.
+   - Summer, comprising the months from May to August, is chosen for analysis due to its relevance to seasonal temperature variations and its impact on various aspects of life in Chicago.
+
+Thesis Statement:
+
+Through the analysis of historical weather data, we aim to determine whether there is a statistically significant change in the average temperature in Chicago between the summers of 2022 and 2023. Our findings will provide valuable insights into temperature trends in the region and contribute to our understanding of climate dynamics in urban environments.
+
+## Background 
+
+The dataset used in this analysis comprises weather data collected from various weather stations in the Chicago area. The data includes variables such as date, temperature, humidity, and other meteorological parameters. The data were collected through interpolation techniques, ensuring comprehensive coverage and accuracy.
+
+The source of our data is Visual Crossing, a provider of weather data services. The dataset covers the period from January 1, 2022, to January 1, 2024, allowing us to examine temperature trends over two consecutive summers. The dataset used for analysis comprises daily maximum temperature records from various weather stations in the Chicago area. Each row in the dataset represents the maximum temperature recorded for a specific day during the summer months (May to August) of the years 2022 and 2023. The temperature values are reported in Celsius.
+
+Understanding the variability in temperature is essential for various stakeholders, including city planners, policymakers, and residents. Changes in temperature can affect energy consumption, agriculture, public health, and infrastructure planning. By analyzing historical temperature data, we aim to uncover any significant shifts in temperature patterns between the specified summers.
+
+It's essential to consider potential factors that may influence the interpretation of results. Chicago's climate is influenced by various factors, including proximity to Lake Michigan, urban heat island effects, and larger-scale atmospheric phenomena. These factors may contribute to local variations in temperature and need to be accounted for in our analysis.
+
+In the following sections of the report, we will detail our methodology for data analysis, including data preparation, statistical techniques employed, and the interpretation of results. Additionally, we will present visualizations to illustrate temperature trends over the specified period and discuss the implications of our findings.
+
+## Analysis
+
+```{r, include = FALSE}
+#Reading in and filtering the data
+chicago = read_csv("Chicago 2022-01-01 to 2023-12-31.csv", show_col_types = FALSE)
+chicago = chicago %>% filter(month(datetime) >= 5 & month(datetime) <= 8)
+```
+
+```{r, include = FALSE}
+#daily maximum temp in Chicago for 2022 and 2023 (May to August)
+ggplot(chicago, aes(x = yday(datetime), y = tempmax)) +
+  geom_line() +
+  facet_wrap(vars(year(datetime))) +
+  labs(title = "Daily Max Temp in Chicago in 2022 and 2023 (May to August)", x = "Day in the Year", y = "Maximum Daily Temperature (Celsius)")
+```
+
+Summary of sample size, mean daily maximum temperature, and standard deviation for the summer of each year:
+
+```{r, include = FALSE}
+chicago %>% group_by(year(datetime)) %>% summarize(sample_size = n(), mean = mean(tempmax), standard_deviation = sd(tempmax))
+```
+
+Here we find the 95% confidence interval for the difference between mean daily maximum temperature for the summers of 2022 and 2023, Using the T distribution and Welch approximate df. One of the primary statistical methods employed in this analysis is Welch's t-test, which is used to compare the means of two independent samples, accounting for potentially unequal variances. The validity of this test relies on several assumptions:
+
+Independence: The observations within each sample are assumed to be independent of each other. In the context of our analysis, this assumption holds as each daily maximum temperature measurement is considered independent of the others
+
+Normality: The populations from which the samples are drawn are assumed to follow normal distributions, or the sample sizes are sufficiently large for the Central Limit Theorem to apply. While we have not explicitly tested for normality, the large sample sizes in our dataset (representing daily temperature readings over multiple years) provide assurance that the Central Limit Theorem holds
+
+Equality of Variances: Welch's t-test is robust to violations of the assumption of equal variances between the two populations. However, it is still important to consider whether the variances are substantially different, as extreme differences could impact the accuracy of the test results
+
+```{r, include = FALSE}
+point_estimate = 27.22358 - 26.38211
+W = (5.482073^2/123 + 4.685258^2/123)^2 / (5.482073^4/(123^2*(123-1)) + 4.685258^4/(123^2*(123-1)))
+cv = qt(0.975, W)
+se = sqrt(5.482073^2/123 + 4.685258^2/123)
+c(point_estimate - cv*se, point_estimate + cv*se)
+```
+
+We wanted to compare the distributions of daily maximum temperature for the two years, and we decided to use a side-by-side boxplot:
+
+```{r, include = FALSE}
+ggplot(chicago, aes(y = tempmax)) +
+  geom_boxplot() +
+  facet_wrap(vars(year(datetime))) +
+  labs(title = "Distribution of Daily Maximum Temperatures by Year",  y = "Daily Maximum Temperature (Celsius)")
+```
+
+Another graphical summary, comparing the average daily maximum temperature by month for the summer of each year:
+
+```{r, include = FALSE}
+months_summary = chicago %>% group_by(year(datetime), month(datetime)) %>% summarize(mean = mean(tempmax))
+ggplot(months_summary, aes(x = `month(datetime)`, y = mean)) +
+  geom_point(size = 5) +
+  facet_wrap(vars(`year(datetime)`)) +
+  labs(title = "Average Daily Max Temperature by Month and Year", x = "Month (Numerical)", y = "Average Daily Maximum Temperature (Celsius)")
+  
+```
+
+## Discussion
+
+In the first model of our boxplot, our mean daily maximum temperatures by year decreased from 2022 to 2023. However, while the means are relatively close to each other, the 25th percentile of 2022 and 2023 greatly differ. 2022 also has a greater amount of potential outliers within its collection of data, but these appear to be naturally ocurring outliers, so there is no reason to believe the true sample mean in 2022 is actually higher. 
+
+In our next data plot, we used a point plot to examine the month-by-month average maximum temperature. Based on the plot, between May and July in 2022, there is a more severe growth in maximum average temperature than that same time period in 2023. This occurrence in the data could be a point of additional study to search for observable causes. Other areas of investigation could include any potential impacts on revenue collected by the city of Chicago from the drastic jump in temperature. The rest of the changes in the individual monthly data are fairly marginal, so further investigation does not appear to be necessary. 
+
+There are a few potential shortcomings to this study. For starters, there are only a select few data collection points within our dataset that we used. As a result, our data could potentially be an inaccurate depiction of the true mean average daily maximum temperature for 2022 and 2023 due to nonsampling error caused by data acquisition problems. Increasing the points of observation within the city of Chicago would ensure that we are getting a true characteristic temperature. The next potential fault I see is the question selection. Choosing to examine temperature changes between one two years will not demonstrate long-term trends for the city. Making decisions based on the difference in means between two years can be a dangerous toleration of potential yearly temperature outliers. Thus, our study is best used for answering short-term questions. 
+
+After conducting Welch's t-test to compare the average daily maximum temperatures between the two summers, we obtained a 95% confidence interval for the difference. The interval estimate ranges from -0.44 to 2.12 degrees Celsius. This confidence interval suggests that we are 95% confident that the difference in the average daily maximum temperature between the summers of 2022 and 2023 falls within the range of -0.44 to 2.12 degrees Celsius. However, the interpretation of whether this difference is statistically significant depends on the context and practical implications. However, there remains a possibility that the true difference in means is a value worth being concerned about for the purpose temperature predictability in the city of Chicago. 

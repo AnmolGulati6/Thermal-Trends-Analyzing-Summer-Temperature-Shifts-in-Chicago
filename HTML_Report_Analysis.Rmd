@@ -1,0 +1,75 @@
+---
+title: "Final Project Analysis"
+output: html_document
+date: "2024-04-11"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE,
+                      warning = FALSE, error = TRUE, fig.height = 3)
+library(tidyverse)
+library(lubridate)
+library(kableExtra)
+library(broman)
+source("../../scripts/viridis.R")
+source("../../scripts/ggprob.R")
+theme_set(theme_minimal())
+```
+
+## Analysis
+
+```{r, include = FALSE}
+#Reading in and filtering the data
+chicago = read_csv("Chicago 2022-01-01 to 2023-12-31.csv", show_col_types = FALSE)
+chicago = chicago %>% filter(month(datetime) >= 5 & month(datetime) <= 8)
+```
+
+```{r, include = FALSE}
+#daily maximum temp in Chicago for 2022 and 2023 (May to August)
+ggplot(chicago, aes(x = yday(datetime), y = tempmax)) +
+  geom_line() +
+  facet_wrap(vars(year(datetime))) +
+  labs(title = "Daily Max Temp in Chicago in 2022 and 2023 (May to August)", x = "Day in the Year", y = "Maximum Daily Temperature (Celsius)")
+```
+
+Summary of sample size, mean daily maximum temperature, and standard deviation for the summer of each year:
+
+```{r, include = FALSE}
+chicago %>% group_by(year(datetime)) %>% summarize(sample_size = n(), mean = mean(tempmax), standard_deviation = sd(tempmax))
+```
+
+Here we find the 95% confidence interval for the difference between mean daily maximum temperature for the summers of 2022 and 2023, Using the T distribution and Welch approximate df. One of the primary statistical methods employed in this analysis is Welch's t-test, which is used to compare the means of two independent samples, accounting for potentially unequal variances. The validity of this test relies on several assumptions:
+
+Independence: The observations within each sample are assumed to be independent of each other. In the context of our analysis, this assumption holds as each daily maximum temperature measurement is considered independent of the others
+
+Normality: The populations from which the samples are drawn are assumed to follow normal distributions, or the sample sizes are sufficiently large for the Central Limit Theorem to apply. While we have not explicitly tested for normality, the large sample sizes in our dataset (representing daily temperature readings over multiple years) provide assurance that the Central Limit Theorem holds
+
+Equality of Variances: Welch's t-test is robust to violations of the assumption of equal variances between the two populations. However, it is still important to consider whether the variances are substantially different, as extreme differences could impact the accuracy of the test results
+
+```{r, include = FALSE}
+point_estimate = 27.22358 - 26.38211
+W = (5.482073^2/123 + 4.685258^2/123)^2 / (5.482073^4/(123^2*(123-1)) + 4.685258^4/(123^2*(123-1)))
+cv = qt(0.975, W)
+se = sqrt(5.482073^2/123 + 4.685258^2/123)
+c(point_estimate - cv*se, point_estimate + cv*se)
+```
+
+We wanted to compare the distributions of daily maximum temperature for the two years, and we decided to use a side-by-side boxplot:
+
+```{r, include = FALSE}
+ggplot(chicago, aes(y = tempmax)) +
+  geom_boxplot() +
+  facet_wrap(vars(year(datetime))) +
+  labs(title = "Distribution of Daily Maximum Temperatures by Year",  y = "Daily Maximum Temperature (Celsius)")
+```
+
+Another graphical summary, comparing the average daily maximum temperature by month for the summer of each year:
+
+```{r, include = FALSE}
+months_summary = chicago %>% group_by(year(datetime), month(datetime)) %>% summarize(mean = mean(tempmax))
+ggplot(months_summary, aes(x = `month(datetime)`, y = mean)) +
+  geom_point(size = 5) +
+  facet_wrap(vars(`year(datetime)`)) +
+  labs(title = "Average Daily Max Temperature by Month and Year", x = "Month (Numerical)", y = "Average Daily Maximum Temperature (Celsius)")
+  
+```
